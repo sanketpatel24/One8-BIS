@@ -40,7 +40,9 @@ const HANDLE_RE = /^[a-z0-9][a-z0-9-_]{0,120}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const E164_RE = /^\+[1-9]\d{7,14}$/;
 
-const DEFAULT_ORIGINS = ["https://one8.com", "https://www.one8.com"];
+const DEFAULT_ORIGINS = ["https://one8sports-row.myshopify.com", "https://global.one8.com"];
+
+const readEnv = (name) => String(process.env[name] || "").trim();
 
 // One Admin API call may not exceed this...
 const REQUEST_TIMEOUT_MS = 4000;
@@ -94,7 +96,7 @@ function clientIp(req) {
 // ---------------------------------------------------------------------------
 
 function allowedOrigins() {
-  const parsed = String(process.env.ALLOWED_ORIGINS || "")
+  const parsed = readEnv("ALLOWED_ORIGINS")
     .split(",")
     .map((o) => o.trim().replace(/\/$/, ""))
     .filter(Boolean);
@@ -230,8 +232,8 @@ function describeAdminError(errors) {
  *   so retries cannot outlive the function's max duration.
  */
 async function adminGraphql(query, variables, ctx, attempt = 1) {
-  const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
+  const domain = readEnv("SHOPIFY_STORE_DOMAIN");
+  const token = readEnv("SHOPIFY_ADMIN_TOKEN");
   if (!domain || !token) {
     throw new Error("Missing SHOPIFY_STORE_DOMAIN or SHOPIFY_ADMIN_TOKEN");
   }

@@ -13,9 +13,11 @@ const API_VERSION = "2025-07";
 
 const SHOP_QUERY = `{ shop { name myshopifyDomain } }`;
 
+const readEnv = (name) => String(process.env[name] || "").trim();
+
 async function probeAdminApi() {
-  const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
+  const domain = readEnv("SHOPIFY_STORE_DOMAIN");
+  const token = readEnv("SHOPIFY_ADMIN_TOKEN");
   if (!domain || !token) return { ok: false, error: "Missing store domain or admin token" };
 
   try {
@@ -57,30 +59,33 @@ export default async function handler(req, res) {
     return;
   }
 
-  const storeDomain = process.env.SHOPIFY_STORE_DOMAIN || null;
-  const allowedOrigins = String(process.env.ALLOWED_ORIGINS || "")
+  const storeDomain = readEnv("SHOPIFY_STORE_DOMAIN") || null;
+  const adminToken = readEnv("SHOPIFY_ADMIN_TOKEN");
+  const allowedOrigins = readEnv("ALLOWED_ORIGINS")
     .split(",")
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/$/, ""))
     .filter(Boolean);
 
   const body = {
     ok: true,
     service: "one8-back-in-stock",
     apiVersion: API_VERSION,
+    nodeEnv: readEnv("NODE_ENV") || null,
     storeDomain,
     // Never echo the token itself — just whether it is present and plausible.
-    adminTokenConfigured: Boolean(process.env.SHOPIFY_ADMIN_TOKEN),
-    adminTokenLooksValid: /^shp(at|ca)_[a-f0-9]{32}$/i.test(
-      process.env.SHOPIFY_ADMIN_TOKEN || "",
-    ),
+    adminTokenConfigured: Boolean(adminToken),
+    adminTokenLooksValid: /^shp(at|ca)_[a-f0-9]{32}$/i.test(adminToken),
     allowedOrigins: allowedOrigins.length
       ? allowedOrigins
-      : ["https://one8.com", "https://www.one8.com (default)"],
+      : ["https://one8sports-row.myshopify.com", "https://global.one8.com (default)"],
   };
 
   if (!storeDomain || !body.adminTokenConfigured) {
     body.ok = false;
     body.error = "Missing SHOPIFY_STORE_DOMAIN or SHOPIFY_ADMIN_TOKEN in this environment";
+  } else if (/^https?:\/\//i.test(storeDomain)) {
+    body.ok = false;
+    body.error = "SHOPIFY_STORE_DOMAIN must be a bare host, e.g. shop.myshopify.com";
   }
 
   const url = new URL(req.url, "http://localhost");
